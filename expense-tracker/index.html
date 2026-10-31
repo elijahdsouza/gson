@@ -1,0 +1,777 @@
+<title>Job Ledger</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky ledger header with tabs; overview = KPI strip, then chart + category split, then job report table with a drill-down panel. */
+:root {
+  --bg: #f3f5f4;
+  --surface: #ffffff;
+  --sunk: #e8ecea;
+  --ink: #17221f;
+  --muted: #5b6a65;
+  --line: #d3dbd8;
+  --accent: #0d5f5a;
+  --accent-soft: #d6ebe8;
+  --income: #1d7a4a;
+  --expense: #b2452f;
+  --warn: #9a6a00;
+  --chart-in: #2b8a6a;
+  --chart-out: #d0795f;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1514; --surface: #161e1c; --sunk: #1d2725; --ink: #e4ece9; --muted: #93a49f; --line: #2b3835;
+  --accent: #5cc2b6; --accent-soft: #1b3936; --income: #5fc98d; --expense: #ef8a72; --warn: #e2b14a;
+  --chart-in: #4fb592; --chart-out: #e08d74; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1514; --surface: #161e1c; --sunk: #1d2725; --ink: #e4ece9; --muted: #93a49f; --line: #2b3835;
+  --accent: #5cc2b6; --accent-soft: #1b3936; --income: #5fc98d; --expense: #ef8a72; --warn: #e2b14a;
+  --chart-in: #4fb592; --chart-out: #e08d74; color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.num, td.num, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h2 { font-size: 1.2rem; font-weight: 700; }
+h3 { font-size: 1rem; font-weight: 500; }
+.label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; align-items: center; gap: 12px 24px; flex-wrap: wrap; padding-block: 12px; }
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { font-size: 1.45rem; font-weight: 700; }
+.brand span { color: var(--muted); font-size: 0.85rem; }
+nav.tabs { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+nav.tabs button { border: 0; background: transparent; padding: 7px 12px; border-radius: 6px; cursor: pointer; color: var(--muted); font-weight: 500; }
+nav.tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); }
+
+.filters { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; padding-block: 16px 4px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field > span { font-size: 0.75rem; color: var(--muted); font-weight: 500; }
+input, select, textarea { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; min-width: 0; }
+input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: transparent; padding: 7px 11px; cursor: pointer; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+.btn { border: 1px solid var(--accent); background: var(--accent); color: var(--surface); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn.small { padding: 4px 9px; font-size: 0.82rem; font-weight: 500; }
+.btn.danger { border-color: var(--expense); color: var(--expense); background: transparent; }
+.btn.danger.armed { background: var(--expense); color: var(--surface); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+main { padding-block: 8px 48px; display: grid; gap: 20px; }
+section.view { display: grid; gap: 20px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; min-width: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.panel-head p { margin: 0; color: var(--muted); font-size: 0.85rem; }
+
+.kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.kpi { padding: 16px 18px; border-right: 1px solid var(--line); display: grid; gap: 4px; min-width: 0; }
+.kpi:last-child { border-right: 0; }
+.kpi .val { font-family: var(--font-mono); font-size: 1.45rem; font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kpi .sub { color: var(--muted); font-size: 0.8rem; }
+.pos { color: var(--income); } .neg { color: var(--expense); }
+
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+.bars { display: grid; gap: 10px; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; font-size: 0.88rem; }
+.bar-track { grid-column: 1 / -1; height: 8px; background: var(--sunk); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--chart-out); border-radius: 4px; }
+.bar-fill.in { background: var(--chart-in); }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th.num, td.num { text-align: right; white-space: nowrap; }
+tbody tr.click { cursor: pointer; }
+tbody tr.click:hover, tbody tr.sel { background: var(--accent-soft); }
+tfoot td { font-weight: 600; border-bottom: 0; border-top: 2px solid var(--line); }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 600; border: 1px solid currentColor; white-space: nowrap; }
+.pill.event { color: var(--accent); } .pill.project { color: var(--warn); }
+.pill.st-active { color: var(--income); } .pill.st-quoted { color: var(--muted); } .pill.st-complete { color: var(--ink); }
+.ex { font-size: 0.7rem; color: var(--warn); border: 1px dashed var(--warn); border-radius: 4px; padding: 0 5px; margin-left: 6px; }
+.meter { width: 90px; height: 6px; background: var(--sunk); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px; }
+.meter b { display: block; height: 100%; background: var(--accent); }
+.meter b.over { background: var(--expense); }
+.row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+.detail { display: grid; gap: 16px; }
+.detail .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.detail .facts div { background: var(--sunk); border-radius: 6px; padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+.detail .facts .num { font-size: 1.1rem; }
+.compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.compare .card { border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: grid; gap: 8px; }
+.compare dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; font-size: 0.88rem; }
+.compare dt { color: var(--muted); } .compare dd { margin: 0; text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+form.entry { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; align-items: end; }
+form.entry .wide { grid-column: span 2; }
+form.entry .full { grid-column: 1 / -1; }
+.form-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.check { flex-direction: row; align-items: center; gap: 8px; padding-bottom: 8px; }
+.note { color: var(--muted); font-size: 0.82rem; }
+.status { font-size: 0.85rem; color: var(--muted); min-height: 1.3em; }
+.empty { padding: 28px 12px; text-align: center; color: var(--muted); }
+.banner { border: 1px dashed var(--warn); color: var(--ink); background: var(--surface); border-radius: 8px; padding: 10px 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; font-size: 0.88rem; }
+
+@media (max-width: 900px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi { border-bottom: 1px solid var(--line); }
+  .grid2, .compare { grid-template-columns: minmax(0, 1fr); }
+  form.entry { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  form.entry .wide { grid-column: 1 / -1; }
+  .detail .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  nav.tabs { margin-left: 0; }
+}
+@media (prefers-reduced-motion: no-preference) { .bar-fill, .meter b { transition: width .3s ease; } }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><h1>Job Ledger</h1><span>Expenses &amp; profit by event and project</span></div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="tab-overview" data-view="overview" aria-selected="true">Overview</button>
+      <button role="tab" id="tab-jobs" data-view="jobs" aria-selected="false">Events &amp; projects</button>
+      <button role="tab" id="tab-ledger" data-view="ledger" aria-selected="false">Ledger</button>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="filters" id="filters">
+    <label class="field"><span>From</span><input type="date" id="f-from"></label>
+    <label class="field"><span>To</span><input type="date" id="f-to"></label>
+    <div class="field"><span>Period</span>
+      <div class="seg" id="f-period">
+        <button type="button" data-p="fy" aria-pressed="false">This FY</button>
+        <button type="button" data-p="lastfy" aria-pressed="false">Last FY</button>
+        <button type="button" data-p="q" aria-pressed="false">Quarter</button>
+        <button type="button" data-p="all" aria-pressed="true">All</button>
+      </div>
+    </div>
+    <div class="field"><span>Show</span>
+      <div class="seg" id="f-kind">
+        <button type="button" data-k="all" aria-pressed="true">All work</button>
+        <button type="button" data-k="event" aria-pressed="false">Events</button>
+        <button type="button" data-k="project" aria-pressed="false">Projects</button>
+      </div>
+    </div>
+    <span class="note" style="margin-left:auto">Report figures are ex GST, in AUD.</span>
+  </div>
+</div>
+
+<main class="wrap">
+  <div class="banner" id="example-banner" hidden>
+    <span>You're looking at example data so you can see how the reports read. Add your own entries, then clear the examples.</span>
+    <button class="btn danger small" id="clear-examples" type="button">Clear example data</button>
+  </div>
+  <div class="status" id="load-status">Connecting to your ledger…</div>
+
+  <!-- OVERVIEW -->
+  <section class="view" id="view-overview">
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <div class="panel chart">
+        <div class="panel-head"><h2>Month by month</h2>
+          <div class="legend"><span><i style="background:var(--chart-in)"></i>Income</span><span><i style="background:var(--chart-out)"></i>Expenses</span><span><i style="background:var(--ink);height:2px"></i>Profit</span></div>
+        </div>
+        <div id="month-chart"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Where the money goes</h2><p>Expenses by category</p></div>
+        <div class="bars" id="cat-bars"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Events vs projects</h2><p>How each line of work performs in this period</p></div>
+      <div class="compare" id="compare"></div>
+    </div>
+  </section>
+
+  <!-- JOBS -->
+  <section class="view" id="view-jobs" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Job profitability report</h2>
+        <div class="form-actions"><button class="btn ghost small" type="button" id="export-jobs">Export report CSV</button></div>
+      </div>
+      <div class="table-wrap"><table id="jobs-table"></table></div>
+      <p class="note">Select a row to see its cost breakdown. Overheads are expenses not linked to any event or project.</p>
+    </div>
+    <div class="panel" id="job-detail" hidden></div>
+    <div class="panel">
+      <div class="panel-head"><h2 id="job-form-title">Add an event or project</h2></div>
+      <form class="entry" id="job-form" autocomplete="off">
+        <label class="field wide"><span>Name</span><input id="j-name" required placeholder="e.g. Spring Gala 2026"></label>
+        <label class="field"><span>Type</span><select id="j-kind"><option value="event">Event</option><option value="project">Project</option></select></label>
+        <label class="field"><span>Status</span><select id="j-status"><option value="quoted">Quoted</option><option value="active">Active</option><option value="complete">Complete</option></select></label>
+        <label class="field wide"><span>Client</span><input id="j-client" placeholder="Client or organiser"></label>
+        <label class="field"><span>Start</span><input type="date" id="j-start"></label>
+        <label class="field"><span>End</span><input type="date" id="j-end"></label>
+        <label class="field"><span>Quoted revenue (ex GST)</span><input type="number" step="0.01" min="0" id="j-quote" inputmode="decimal"></label>
+        <label class="field"><span>Cost budget (ex GST)</span><input type="number" step="0.01" min="0" id="j-budget" inputmode="decimal"></label>
+        <label class="field"><span>Attendees / units</span><input type="number" step="1" min="0" id="j-units" inputmode="numeric" placeholder="optional"></label>
+        <div class="form-actions full">
+          <button class="btn" type="submit" id="j-submit">Save</button>
+          <button class="btn ghost" type="button" id="j-cancel" hidden>Cancel edit</button>
+          <span class="status" id="j-status-msg"></span>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- LEDGER -->
+  <section class="view" id="view-ledger" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2 id="tx-form-title">Record income or an expense</h2></div>
+      <form class="entry" id="tx-form" autocomplete="off">
+        <div class="field"><span>Entry</span>
+          <div class="seg" id="t-type">
+            <button type="button" data-t="expense" aria-pressed="true">Expense</button>
+            <button type="button" data-t="income" aria-pressed="false">Income</button>
+          </div>
+        </div>
+        <label class="field"><span>Date</span><input type="date" id="t-date" required></label>
+        <label class="field"><span>Amount incl. GST</span><input type="number" step="0.01" min="0" id="t-amount" required inputmode="decimal"></label>
+        <label class="field check"><input type="checkbox" id="t-gst" checked><span>Includes 10% GST</span></label>
+        <label class="field wide"><span>Event / project</span><select id="t-job"></select></label>
+        <label class="field wide"><span>Category</span><select id="t-cat"></select></label>
+        <label class="field wide"><span>Supplier / payer</span><input id="t-party" placeholder="Who you paid or who paid you"></label>
+        <label class="field wide"><span>Note</span><input id="t-note" placeholder="Invoice #, what it was for"></label>
+        <div class="form-actions full">
+          <button class="btn" type="submit" id="t-submit">Save entry</button>
+          <button class="btn ghost" type="button" id="t-cancel" hidden>Cancel edit</button>
+          <span class="status" id="t-status-msg"></span>
+        </div>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Ledger</h2>
+        <div class="form-actions">
+          <label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>Job</span><select id="l-job"></select></label>
+          <button class="btn ghost small" type="button" id="export-tx">Export ledger CSV</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table id="tx-table"></table></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const EXPENSE_CATS = ["Venue & hire", "Catering", "Staff & contractors", "Talent & entertainment", "Equipment & AV", "Production & print", "Marketing & ads", "Travel & transport", "Materials & supplies", "Software & subscriptions", "Insurance & permits", "Fees & bank charges", "Other expense"];
+  const INCOME_CATS = ["Client fee", "Ticket sales", "Sponsorship", "Merch & bar sales", "Grants", "Other income"];
+  const $ = (id) => document.getElementById(id);
+  const aud = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 });
+  const aud2 = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: 2 });
+  const fmt = (n) => aud.format(Math.round(n));
+  const pct = (n) => (isFinite(n) ? (n * 100).toFixed(1) + "%" : "–");
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  const state = { jobs: [], tx: [], from: "", to: "", kind: "all", view: "overview", selJob: null, ledgerJob: "all", txType: "expense", editTx: null, editJob: null, canWrite: true };
+  let db = null, downloads = null;
+
+  // ---------- derived numbers ----------
+  const net = (t) => (Number(t.amount) || 0) - (Number(t.gst) || 0);
+  const jobById = (id) => state.jobs.find((j) => j.id === id);
+  function inPeriod(t) {
+    if (state.from && t.date < state.from) return false;
+    if (state.to && t.date > state.to) return false;
+    return true;
+  }
+  function inKind(t) {
+    if (state.kind === "all") return true;
+    const j = jobById(t.jobId);
+    return j ? j.kind === state.kind : false;
+  }
+  const scoped = () => state.tx.filter((t) => inPeriod(t) && inKind(t));
+
+  function totals(list) {
+    let inc = 0, exp = 0, gstIn = 0, gstOut = 0;
+    for (const t of list) {
+      if (t.type === "income") { inc += net(t); gstIn += Number(t.gst) || 0; }
+      else { exp += net(t); gstOut += Number(t.gst) || 0; }
+    }
+    return { inc, exp, profit: inc - exp, margin: inc ? (inc - exp) / inc : NaN, gstIn, gstOut };
+  }
+
+  function jobRows() {
+    const list = state.tx.filter(inPeriod);
+    const rows = state.jobs
+      .filter((j) => state.kind === "all" || j.kind === state.kind)
+      .map((j) => {
+        const own = list.filter((t) => t.jobId === j.id);
+        return { job: j, ...totals(own), count: own.length };
+      })
+      .filter((r) => r.count > 0 || !state.from && !state.to);
+    rows.sort((a, b) => b.profit - a.profit);
+    return rows;
+  }
+
+  // ---------- rendering ----------
+  function render() {
+    renderKpis(); renderMonthChart(); renderCats(); renderCompare();
+    renderJobs(); renderDetail(); renderJobOptions(); renderLedger();
+    $("example-banner").hidden = !(state.canWrite && (state.jobs.some((j) => j.example) || state.tx.some((t) => t.example)));
+  }
+
+  function renderKpis() {
+    const list = scoped();
+    const t = totals(list);
+    const overhead = state.kind === "all" ? totals(list.filter((x) => !x.jobId)).exp : 0;
+    const gstNet = t.gstIn - t.gstOut;
+    $("kpis").innerHTML = [
+      ["Income", fmt(t.inc), `${list.filter((x) => x.type === "income").length} entries`, ""],
+      ["Expenses", fmt(t.exp), state.kind === "all" ? `${fmt(overhead)} is overhead` : `${list.filter((x) => x.type !== "income").length} entries`, ""],
+      ["Net profit", fmt(t.profit), "Income less expenses", t.profit >= 0 ? "pos" : "neg"],
+      ["Margin", pct(t.margin), "Profit ÷ income", t.margin >= 0 ? "pos" : "neg"],
+      [gstNet >= 0 ? "GST owing" : "GST refund", fmt(Math.abs(gstNet)), `${fmt(t.gstIn)} collected · ${fmt(t.gstOut)} credits`, ""],
+    ].map(([l, v, s, c]) => `<div class="kpi"><span class="label">${l}</span><span class="val ${c}">${v}</span><span class="sub">${s}</span></div>`).join("");
+  }
+
+  function renderMonthChart() {
+    const list = scoped();
+    const el = $("month-chart");
+    if (!list.length) { el.innerHTML = `<div class="empty">No entries in this period yet. Record income or an expense in the Ledger tab.</div>`; return; }
+    const months = new Map();
+    for (const t of list) {
+      const m = t.date.slice(0, 7);
+      if (!months.has(m)) months.set(m, { inc: 0, exp: 0 });
+      months.get(m)[t.type === "income" ? "inc" : "exp"] += net(t);
+    }
+    // fill gaps between first and last month
+    const keys = [...months.keys()].sort();
+    const all = [];
+    let [y, mo] = keys[0].split("-").map(Number);
+    const [ly, lm] = keys[keys.length - 1].split("-").map(Number);
+    while (y < ly || (y === ly && mo <= lm)) { all.push(`${y}-${String(mo).padStart(2, "0")}`); mo++; if (mo > 12) { mo = 1; y++; } }
+    const data = all.slice(-18).map((k) => ({ k, ...(months.get(k) || { inc: 0, exp: 0 }) }));
+    const W = 640, H = 260, L = 56, R = 12, T = 12, B = 30;
+    const profits = data.map((d) => d.inc - d.exp);
+    let max = Math.max(...data.map((d) => Math.max(d.inc, d.exp)), ...profits, 1);
+    let min = Math.min(0, ...profits);
+    const step = niceStep((max - min) / 4);
+    max = Math.ceil(max / step) * step; min = Math.floor(min / step) * step;
+    const y0 = (v) => T + (max - v) / (max - min) * (H - T - B);
+    const bw = (W - L - R) / data.length;
+    const barW = Math.min(18, bw * 0.34);
+    let g = "";
+    for (let v = min; v <= max + 1e-6; v += step) {
+      g += `<line x1="${L}" x2="${W - R}" y1="${y0(v)}" y2="${y0(v)}" stroke="var(--line)" ${v === 0 ? 'stroke-width="1.5"' : 'stroke-dasharray="2 3"'}/>`;
+      g += `<text x="${L - 8}" y="${y0(v) + 4}" text-anchor="end">${shortMoney(v)}</text>`;
+    }
+    const labelEvery = Math.ceil(data.length / 9);
+    data.forEach((d, i) => {
+      const cx = L + bw * i + bw / 2;
+      g += `<rect x="${cx - barW - 1}" y="${y0(d.inc)}" width="${barW}" height="${Math.max(0, y0(0) - y0(d.inc))}" fill="var(--chart-in)" rx="2"><title>${d.k} income ${fmt(d.inc)}</title></rect>`;
+      g += `<rect x="${cx + 1}" y="${y0(d.exp)}" width="${barW}" height="${Math.max(0, y0(0) - y0(d.exp))}" fill="var(--chart-out)" rx="2"><title>${d.k} expenses ${fmt(d.exp)}</title></rect>`;
+      if (i % labelEvery === 0) g += `<text x="${cx}" y="${H - 10}" text-anchor="middle">${monthLabel(d.k)}</text>`;
+    });
+    const pts = data.map((d, i) => `${L + bw * i + bw / 2},${y0(d.inc - d.exp)}`).join(" ");
+    g += `<polyline points="${pts}" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>`;
+    data.forEach((d, i) => {
+      const last = i === data.length - 1;
+      g += `<circle cx="${L + bw * i + bw / 2}" cy="${y0(d.inc - d.exp)}" r="${last ? 4 : 2.5}" fill="${last ? "var(--accent)" : "var(--ink)"}"><title>${d.k} profit ${fmt(d.inc - d.exp)}</title></circle>`;
+    });
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Monthly income, expenses and profit">${g}</svg>`;
+  }
+  function niceStep(raw) {
+    const p = Math.pow(10, Math.floor(Math.log10(raw || 1)));
+    const n = raw / p;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p;
+  }
+  function shortMoney(v) {
+    const a = Math.abs(v), s = v < 0 ? "-" : "";
+    return a >= 1e6 ? `${s}$${(a / 1e6).toFixed(1)}m` : a >= 1000 ? `${s}$${Math.round(a / 1000)}k` : `${s}$${Math.round(a)}`;
+  }
+  function monthLabel(k) {
+    const [y, m] = k.split("-");
+    return new Date(+y, +m - 1, 1).toLocaleString("en-AU", { month: "short" }) + (m === "01" || m === "07" ? ` ${y.slice(2)}` : "");
+  }
+
+  function renderCats() {
+    const sums = new Map();
+    for (const t of scoped()) if (t.type !== "income") sums.set(t.category, (sums.get(t.category) || 0) + net(t));
+    const rows = [...sums.entries()].sort((a, b) => b[1] - a[1]);
+    const total = rows.reduce((s, r) => s + r[1], 0);
+    $("cat-bars").innerHTML = rows.length ? rows.map(([c, v]) => `
+      <div class="bar-row"><span>${esc(c)}</span><span class="num">${fmt(v)} <span class="note">${pct(v / total)}</span></span>
+      <div class="bar-track"><div class="bar-fill" style="width:${(v / rows[0][1] * 100).toFixed(1)}%"></div></div></div>`).join("")
+      : `<div class="empty">Expenses will be grouped here by category.</div>`;
+  }
+
+  function renderCompare() {
+    const list = state.tx.filter(inPeriod);
+    const kinds = state.kind === "all" ? ["event", "project"] : [state.kind];
+    $("compare").innerHTML = kinds.map((k) => {
+      const jobs = state.jobs.filter((j) => j.kind === k);
+      const ids = new Set(jobs.map((j) => j.id));
+      const own = list.filter((t) => ids.has(t.jobId));
+      const t = totals(own);
+      const active = jobs.filter((j) => own.some((x) => x.jobId === j.id));
+      const n = active.length;
+      const units = active.reduce((s, j) => s + (Number(j.units) || 0), 0);
+      const perJob = active.map((j) => totals(own.filter((x) => x.jobId === j.id)).profit);
+      const best = n ? active[perJob.indexOf(Math.max(...perJob))] : null;
+      const losing = perJob.filter((p) => p < 0).length;
+      const noun = k === "event" ? "event" : "project";
+      return `<div class="card">
+        <div class="panel-head" style="margin:0"><h3>${k === "event" ? "Events" : "Projects"}</h3><span class="pill ${k}">${n} with activity</span></div>
+        <dl>
+          <dt>Income</dt><dd>${fmt(t.inc)}</dd>
+          <dt>Direct costs</dt><dd>${fmt(t.exp)}</dd>
+          <dt>Profit</dt><dd class="${t.profit >= 0 ? "pos" : "neg"}">${fmt(t.profit)}</dd>
+          <dt>Margin</dt><dd>${pct(t.margin)}</dd>
+          <dt>Average profit per ${noun}</dt><dd>${n ? fmt(t.profit / n) : "–"}</dd>
+          ${units ? `<dt>Profit per attendee / unit</dt><dd>${aud2.format(t.profit / units)}</dd>` : ""}
+          <dt>Most profitable</dt><dd>${best ? esc(best.name) : "–"}</dd>
+          <dt>Running at a loss</dt><dd class="${losing ? "neg" : ""}">${losing}</dd>
+        </dl></div>`;
+    }).join("");
+  }
+
+  function renderJobs() {
+    const rows = jobRows();
+    const overhead = state.kind === "all" ? totals(state.tx.filter((t) => inPeriod(t) && !t.jobId)) : null;
+    const tbl = $("jobs-table");
+    if (!rows.length && !(overhead && (overhead.inc || overhead.exp))) {
+      tbl.innerHTML = `<tbody><tr><td class="empty">No events or projects yet. Add your first one with the form below.</td></tr></tbody>`;
+      return;
+    }
+    const sum = rows.reduce((s, r) => ({ inc: s.inc + r.inc, exp: s.exp + r.exp }), { inc: 0, exp: 0 });
+    const head = `<thead><tr><th>Event / project</th><th>Type</th><th>Status</th><th>Dates</th><th class="num">Income</th><th class="num">Costs</th><th class="num">Profit</th><th class="num">Margin</th><th>Cost vs budget</th><th class="num">vs quote</th></tr></thead>`;
+    const body = rows.map((r) => {
+      const j = r.job, budget = Number(j.budget) || 0, quote = Number(j.quote) || 0;
+      const used = budget ? r.exp / budget : 0;
+      const qDiff = quote ? r.inc - quote : null;
+      return `<tr class="click ${state.selJob === j.id ? "sel" : ""}" data-job="${esc(j.id)}" tabindex="0">
+        <td><strong>${esc(j.name)}</strong>${j.example ? '<span class="ex">example</span>' : ""}<div class="note">${esc(j.client || "")}</div></td>
+        <td><span class="pill ${j.kind}">${j.kind === "event" ? "Event" : "Project"}</span></td>
+        <td><span class="pill st-${esc(j.status)}">${esc(cap(j.status))}</span></td>
+        <td class="mono note">${dateRange(j)}</td>
+        <td class="num">${fmt(r.inc)}</td><td class="num">${fmt(r.exp)}</td>
+        <td class="num ${r.profit >= 0 ? "pos" : "neg"}">${fmt(r.profit)}</td>
+        <td class="num">${pct(r.margin)}</td>
+        <td>${budget ? `<span class="meter"><b class="${used > 1 ? "over" : ""}" style="width:${Math.min(100, used * 100).toFixed(0)}%"></b></span><span class="mono note">${pct(used)}</span>` : '<span class="note">No budget</span>'}</td>
+        <td class="num ${qDiff == null ? "" : qDiff >= 0 ? "pos" : "neg"}">${qDiff == null ? "–" : (qDiff >= 0 ? "+" : "") + fmt(qDiff)}</td></tr>`;
+    }).join("");
+    const oh = overhead && (overhead.inc || overhead.exp) ? `<tr><td><strong>Overheads</strong><div class="note">Not linked to a job</div></td><td></td><td></td><td></td>
+      <td class="num">${fmt(overhead.inc)}</td><td class="num">${fmt(overhead.exp)}</td><td class="num ${overhead.profit >= 0 ? "pos" : "neg"}">${fmt(overhead.profit)}</td><td colspan="3"></td></tr>` : "";
+    const ti = sum.inc + (overhead ? overhead.inc : 0), te = sum.exp + (overhead ? overhead.exp : 0);
+    const foot = `<tfoot><tr><td colspan="4">Business total</td><td class="num">${fmt(ti)}</td><td class="num">${fmt(te)}</td><td class="num ${ti - te >= 0 ? "pos" : "neg"}">${fmt(ti - te)}</td><td class="num">${pct(ti ? (ti - te) / ti : NaN)}</td><td colspan="2"></td></tr></tfoot>`;
+    tbl.innerHTML = head + `<tbody>${body}${oh}</tbody>` + foot;
+  }
+  const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : "");
+  function dateRange(j) {
+    const f = (d) => d ? new Date(d + "T00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "2-digit" }) : "";
+    if (!j.start) return "";
+    return j.end && j.end !== j.start ? `${f(j.start)} – ${f(j.end)}` : f(j.start);
+  }
+
+  function renderDetail() {
+    const el = $("job-detail");
+    const j = state.selJob && jobById(state.selJob);
+    if (!j) { el.hidden = true; return; }
+    el.hidden = false;
+    const own = state.tx.filter((t) => t.jobId === j.id && inPeriod(t));
+    const t = totals(own);
+    const budget = Number(j.budget) || 0, quote = Number(j.quote) || 0, units = Number(j.units) || 0;
+    const byCat = (type) => {
+      const m = new Map();
+      own.filter((x) => (type === "income") === (x.type === "income")).forEach((x) => m.set(x.category, (m.get(x.category) || 0) + net(x)));
+      return [...m.entries()].sort((a, b) => b[1] - a[1]);
+    };
+    const bars = (rows, cls) => rows.length ? rows.map(([c, v]) => `<div class="bar-row"><span>${esc(c)}</span><span class="num">${fmt(v)}</span>
+      <div class="bar-track"><div class="bar-fill ${cls}" style="width:${(v / rows[0][1] * 100).toFixed(1)}%"></div></div></div>`).join("") : `<div class="note">None recorded.</div>`;
+    const wr = state.canWrite ? `<div class="form-actions"><button class="btn ghost small" type="button" data-act="edit-job">Edit details</button><button class="btn ghost small" type="button" data-act="add-tx-job">Add entry to this job</button><button class="btn danger small" type="button" data-act="del-job">Delete</button></div>` : "";
+    el.innerHTML = `<div class="detail">
+      <div class="panel-head" style="margin:0"><div><span class="label">${j.kind === "event" ? "Event" : "Project"} report</span><h2>${esc(j.name)}</h2><p class="note">${esc(j.client || "No client set")} · ${dateRange(j) || "No dates"} · ${esc(cap(j.status))}</p></div>${wr}</div>
+      <div class="facts">
+        <div><span class="label">Profit</span><span class="num ${t.profit >= 0 ? "pos" : "neg"}">${fmt(t.profit)}</span><span class="note">${pct(t.margin)} margin</span></div>
+        <div><span class="label">Costs vs budget</span><span class="num">${fmt(t.exp)}</span><span class="note">${budget ? `${budget >= t.exp ? fmt(budget - t.exp) + " left of " : fmt(t.exp - budget) + " over "}${fmt(budget)}` : "No budget set"}</span></div>
+        <div><span class="label">Income vs quote</span><span class="num">${fmt(t.inc)}</span><span class="note">${quote ? `${pct(t.inc / quote)} of ${fmt(quote)} quoted` : "No quote set"}</span></div>
+        <div><span class="label">${units ? "Per attendee / unit" : "Entries"}</span><span class="num">${units ? aud2.format(t.profit / units) : own.length}</span><span class="note">${units ? `${units} units · cost ${aud2.format(t.exp / units)} each` : "income + expense lines"}</span></div>
+      </div>
+      <div class="grid2">
+        <div><h3 style="margin-bottom:10px">Cost breakdown</h3><div class="bars">${bars(byCat("expense"), "")}</div></div>
+        <div><h3 style="margin-bottom:10px">Income sources</h3><div class="bars">${bars(byCat("income"), "in")}</div></div>
+      </div></div>`;
+  }
+
+  function renderJobOptions() {
+    const sorted = [...state.jobs].sort((a, b) => (b.start || "").localeCompare(a.start || ""));
+    const opts = sorted.map((j) => `<option value="${esc(j.id)}">${esc(j.name)} (${j.kind === "event" ? "event" : "project"})</option>`).join("");
+    const tj = $("t-job"), lj = $("l-job");
+    const keepT = tj.value, keepL = lj.value || state.ledgerJob;
+    tj.innerHTML = `<option value="">Overhead (no job)</option>` + opts;
+    lj.innerHTML = `<option value="all">All</option><option value="">Overheads</option>` + opts;
+    if ([...tj.options].some((o) => o.value === keepT)) tj.value = keepT;
+    lj.value = [...lj.options].some((o) => o.value === keepL) ? keepL : "all";
+    state.ledgerJob = lj.value;
+  }
+
+  function renderCatOptions() {
+    const cats = state.txType === "income" ? INCOME_CATS : EXPENSE_CATS;
+    const sel = $("t-cat"), keep = sel.value;
+    sel.innerHTML = cats.map((c) => `<option>${esc(c)}</option>`).join("");
+    if (cats.includes(keep)) sel.value = keep;
+  }
+
+  function ledgerList() {
+    return scoped().filter((t) => state.ledgerJob === "all" || (t.jobId || "") === state.ledgerJob)
+      .sort((a, b) => b.date.localeCompare(a.date) || (b.created || 0) - (a.created || 0));
+  }
+  function renderLedger() {
+    const list = ledgerList();
+    const tbl = $("tx-table");
+    if (!list.length) { tbl.innerHTML = `<tbody><tr><td class="empty">No entries for this filter. Use the form above to record your first one.</td></tr></tbody>`; return; }
+    tbl.innerHTML = `<thead><tr><th>Date</th><th>Job</th><th>Category</th><th>Supplier / payer</th><th class="num">Ex GST</th><th class="num">GST</th><th class="num">Total</th>${state.canWrite ? "<th></th>" : ""}</tr></thead><tbody>` +
+      list.map((t) => {
+        const j = jobById(t.jobId), sign = t.type === "income" ? 1 : -1;
+        return `<tr><td class="mono">${t.date}</td>
+          <td>${j ? esc(j.name) : '<span class="note">Overhead</span>'}${t.example ? '<span class="ex">example</span>' : ""}</td>
+          <td>${esc(t.category)}${t.note ? `<div class="note">${esc(t.note)}</div>` : ""}</td>
+          <td>${esc(t.party || "")}</td>
+          <td class="num ${sign > 0 ? "pos" : "neg"}">${sign > 0 ? "" : "−"}${aud2.format(net(t))}</td>
+          <td class="num note">${aud2.format(Number(t.gst) || 0)}</td>
+          <td class="num">${aud2.format(Number(t.amount) || 0)}</td>
+          ${state.canWrite ? `<td><div class="row-actions"><button class="btn ghost small" type="button" data-edit-tx="${esc(t.id)}">Edit</button><button class="btn danger small" type="button" data-del-tx="${esc(t.id)}">Delete</button></div></td>` : ""}</tr>`;
+      }).join("") + "</tbody>";
+  }
+
+  // ---------- filters & navigation ----------
+  function setView(v) {
+    state.view = v;
+    document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === v)));
+    ["overview", "jobs", "ledger"].forEach((k) => ($("view-" + k).hidden = k !== v));
+    try { history.replaceState(null, "", "#" + v); } catch {}
+  }
+  document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+  window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (["overview", "jobs", "ledger"].includes(h)) setView(h); });
+
+  function fyStart(d) { return d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1; }
+  function setPeriod(p) {
+    const now = new Date();
+    if (p === "fy") { const y = fyStart(now); state.from = `${y}-07-01`; state.to = `${y + 1}-06-30`; }
+    else if (p === "lastfy") { const y = fyStart(now) - 1; state.from = `${y}-07-01`; state.to = `${y + 1}-06-30`; }
+    else if (p === "q") { const qm = Math.floor(now.getMonth() / 3) * 3; const s = new Date(now.getFullYear(), qm, 1), e = new Date(now.getFullYear(), qm + 3, 0); state.from = iso(s); state.to = iso(e); }
+    else { state.from = ""; state.to = ""; }
+    $("f-from").value = state.from; $("f-to").value = state.to;
+    document.querySelectorAll("#f-period button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.p === p)));
+    render();
+  }
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  document.querySelectorAll("#f-period button").forEach((b) => b.addEventListener("click", () => setPeriod(b.dataset.p)));
+  ["f-from", "f-to"].forEach((id) => $(id).addEventListener("change", () => {
+    state.from = $("f-from").value; state.to = $("f-to").value;
+    document.querySelectorAll("#f-period button").forEach((b) => b.setAttribute("aria-pressed", "false"));
+    render();
+  }));
+  document.querySelectorAll("#f-kind button").forEach((b) => b.addEventListener("click", () => {
+    state.kind = b.dataset.k;
+    document.querySelectorAll("#f-kind button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    render();
+  }));
+  $("l-job").addEventListener("change", (e) => { state.ledgerJob = e.target.value; renderLedger(); });
+
+  // job table selection
+  $("jobs-table").addEventListener("click", (e) => {
+    const tr = e.target.closest("tr[data-job]"); if (!tr) return;
+    state.selJob = state.selJob === tr.dataset.job ? null : tr.dataset.job;
+    renderJobs(); renderDetail();
+    if (state.selJob) $("job-detail").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  });
+  $("jobs-table").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.matches("tr[data-job]")) e.target.click(); });
+
+  // two-step delete buttons
+  function armed(btn) {
+    if (btn.classList.contains("armed")) return true;
+    btn.classList.add("armed"); const old = btn.textContent; btn.textContent = "Confirm delete";
+    setTimeout(() => { btn.classList.remove("armed"); btn.textContent = old; }, 3000);
+    return false;
+  }
+
+  $("job-detail").addEventListener("click", async (e) => {
+    const b = e.target.closest("button[data-act]"); if (!b) return;
+    const j = jobById(state.selJob); if (!j) return;
+    if (b.dataset.act === "edit-job") fillJobForm(j);
+    if (b.dataset.act === "add-tx-job") { setView("ledger"); $("t-job").value = j.id; $("t-date").focus(); }
+    if (b.dataset.act === "del-job") {
+      if (!armed(b)) return;
+      const linked = state.tx.filter((t) => t.jobId === j.id);
+      try {
+        for (const t of linked) await db.doc("transactions/" + t.id).update({ jobId: "" });
+        await db.doc("jobs/" + j.id).delete();
+        state.selJob = null;
+      } catch (err) { failed(err, "j-status-msg"); }
+    }
+  });
+
+  // ---------- forms ----------
+  document.querySelectorAll("#t-type button").forEach((b) => b.addEventListener("click", () => setTxType(b.dataset.t)));
+  function setTxType(t) {
+    state.txType = t;
+    document.querySelectorAll("#t-type button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.t === t)));
+    renderCatOptions();
+  }
+
+  function failed(err, where) {
+    const code = err && err.code;
+    $(where).textContent = code === "invalid_argument" ? "You have view-only access, so this wasn't saved." : code === "quota_exceeded" ? "The ledger is full. Delete old entries to make room." : "Couldn't save just now. Check your connection and try again.";
+    if (code === "invalid_argument") { state.canWrite = false; applyWriteAccess(); }
+  }
+
+  $("tx-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!db) return;
+    const amount = Math.round(parseFloat($("t-amount").value) * 100) / 100;
+    if (!(amount > 0)) { $("t-status-msg").textContent = "Enter an amount above zero."; return; }
+    const gst = $("t-gst").checked ? Math.round(amount / 11 * 100) / 100 : 0;
+    const doc = { type: state.txType, date: $("t-date").value, amount, gst, jobId: $("t-job").value, category: $("t-cat").value, party: $("t-party").value.trim(), note: $("t-note").value.trim() };
+    $("t-submit").disabled = true;
+    try {
+      if (state.editTx) {
+        const prev = state.tx.find((t) => t.id === state.editTx) || {};
+        await db.doc("transactions/" + state.editTx).set({ ...doc, created: prev.created || Date.now(), example: !!prev.example });
+        $("t-status-msg").textContent = "Entry updated.";
+      } else {
+        await db.collection("transactions").add({ ...doc, created: Date.now() });
+        $("t-status-msg").textContent = `${state.txType === "income" ? "Income" : "Expense"} of ${aud2.format(amount)} saved.`;
+      }
+      resetTxForm(true);
+    } catch (err) { failed(err, "t-status-msg"); }
+    $("t-submit").disabled = false;
+  });
+  function resetTxForm(keepJob) {
+    const job = $("t-job").value;
+    state.editTx = null;
+    $("t-amount").value = ""; $("t-party").value = ""; $("t-note").value = ""; $("t-gst").checked = true;
+    if (!keepJob) $("t-job").value = ""; else $("t-job").value = job;
+    $("tx-form-title").textContent = "Record income or an expense";
+    $("t-submit").textContent = "Save entry"; $("t-cancel").hidden = true;
+  }
+  $("t-cancel").addEventListener("click", () => { resetTxForm(false); $("t-status-msg").textContent = ""; });
+
+  $("tx-table").addEventListener("click", async (e) => {
+    const ed = e.target.closest("[data-edit-tx]"), del = e.target.closest("[data-del-tx]");
+    if (ed) {
+      const t = state.tx.find((x) => x.id === ed.dataset.editTx); if (!t) return;
+      state.editTx = t.id; setTxType(t.type === "income" ? "income" : "expense");
+      $("t-date").value = t.date; $("t-amount").value = t.amount; $("t-gst").checked = Number(t.gst) > 0;
+      $("t-job").value = t.jobId || ""; $("t-cat").value = t.category; $("t-party").value = t.party || ""; $("t-note").value = t.note || "";
+      $("tx-form-title").textContent = "Edit entry"; $("t-submit").textContent = "Update entry"; $("t-cancel").hidden = false;
+      $("tx-form").scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+    if (del) {
+      if (!armed(del)) return;
+      try { await db.doc("transactions/" + del.dataset.delTx).delete(); } catch (err) { failed(err, "t-status-msg"); }
+    }
+  });
+
+  $("job-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!db) return;
+    const num = (id) => { const v = parseFloat($(id).value); return isFinite(v) ? v : 0; };
+    const doc = { name: $("j-name").value.trim(), kind: $("j-kind").value, status: $("j-status").value, client: $("j-client").value.trim(), start: $("j-start").value, end: $("j-end").value, quote: num("j-quote"), budget: num("j-budget"), units: num("j-units") };
+    if (!doc.name) return;
+    $("j-submit").disabled = true;
+    try {
+      if (state.editJob) {
+        const prev = jobById(state.editJob) || {};
+        await db.doc("jobs/" + state.editJob).set({ ...doc, example: !!prev.example });
+        $("j-status-msg").textContent = `${doc.name} updated.`;
+      } else {
+        const ref = await db.collection("jobs").add(doc);
+        state.selJob = ref.id;
+        $("j-status-msg").textContent = `${doc.name} added. Record its income and costs in the Ledger tab.`;
+      }
+      resetJobForm();
+    } catch (err) { failed(err, "j-status-msg"); }
+    $("j-submit").disabled = false;
+  });
+  function fillJobForm(j) {
+    state.editJob = j.id;
+    $("j-name").value = j.name; $("j-kind").value = j.kind; $("j-status").value = j.status || "active"; $("j-client").value = j.client || "";
+    $("j-start").value = j.start || ""; $("j-end").value = j.end || ""; $("j-quote").value = j.quote || ""; $("j-budget").value = j.budget || ""; $("j-units").value = j.units || "";
+    $("job-form-title").textContent = `Edit ${j.name}`; $("j-submit").textContent = "Update"; $("j-cancel").hidden = false;
+    $("job-form").scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+  function resetJobForm() {
+    state.editJob = null; $("job-form").reset();
+    $("job-form-title").textContent = "Add an event or project"; $("j-submit").textContent = "Save"; $("j-cancel").hidden = true;
+  }
+  $("j-cancel").addEventListener("click", () => { resetJobForm(); $("j-status-msg").textContent = ""; });
+
+  $("clear-examples").addEventListener("click", async (e) => {
+    if (!armed(e.currentTarget)) return;
+    try {
+      for (const t of state.tx.filter((x) => x.example)) await db.doc("transactions/" + t.id).delete();
+      for (const j of state.jobs.filter((x) => x.example)) await db.doc("jobs/" + j.id).delete();
+    } catch (err) { failed(err, "t-status-msg"); }
+  });
+
+  // ---------- CSV export ----------
+  const csv = (rows) => rows.map((r) => r.map((v) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }).join(",")).join("\n");
+  async function save(filename, data, btn) {
+    if (!downloads) return;
+    try { await downloads.save({ filename, data }); } catch (err) { btn.textContent = "Export not available here"; }
+  }
+  $("export-tx").addEventListener("click", (e) => {
+    const rows = [["Date", "Type", "Event/project", "Category", "Supplier/payer", "Note", "Ex GST", "GST", "Total"]];
+    ledgerList().forEach((t) => rows.push([t.date, t.type, jobById(t.jobId)?.name || "Overhead", t.category, t.party, t.note, net(t).toFixed(2), (Number(t.gst) || 0).toFixed(2), (Number(t.amount) || 0).toFixed(2)]));
+    save(`ledger-${today()}.csv`, csv(rows), e.currentTarget);
+  });
+  $("export-jobs").addEventListener("click", (e) => {
+    const rows = [["Event/project", "Type", "Client", "Status", "Start", "End", "Income ex GST", "Costs ex GST", "Profit", "Margin %", "Budget", "Quote", "Units"]];
+    jobRows().forEach((r) => rows.push([r.job.name, r.job.kind, r.job.client, r.job.status, r.job.start, r.job.end, r.inc.toFixed(2), r.exp.toFixed(2), r.profit.toFixed(2), isFinite(r.margin) ? (r.margin * 100).toFixed(1) : "", r.job.budget || "", r.job.quote || "", r.job.units || ""]));
+    save(`job-report-${state.from || "all"}-${state.to || today()}.csv`, csv(rows), e.currentTarget);
+  });
+
+  function applyWriteAccess() {
+    ["tx-form", "job-form"].forEach((id) => $(id).closest(".panel").hidden = !state.canWrite);
+    render();
+  }
+
+  // ---------- boot ----------
+  $("t-date").value = today();
+  setTxType("expense");
+  { const h = location.hash.slice(1); if (["overview", "jobs", "ledger"].includes(h)) setView(h); }
+  render();
+
+  (async () => {
+    if (!window.claude || !claude.use) { $("load-status").textContent = "Open this page on claude.ai to load your ledger."; return; }
+    const [d, user, dl] = await Promise.all([claude.use("db"), claude.use("user"), claude.use("downloads")]);
+    downloads = dl;
+    if (!dl) { $("export-tx").hidden = true; $("export-jobs").hidden = true; }
+    if (!d) { $("load-status").textContent = "Sign in to claude.ai to see and record entries."; state.canWrite = false; applyWriteAccess(); return; }
+    db = d;
+    if (user) { const c = await user.can("data.write"); if (c === false) { state.canWrite = false; applyWriteAccess(); } }
+    let got = 0;
+    const timer = setTimeout(() => { if (got < 2) $("load-status").textContent = "Still connecting… entries will appear when the ledger answers."; }, 10000);
+    const ready = () => { if (++got === 2) { clearTimeout(timer); $("load-status").hidden = true; } };
+    let a = false, b = false;
+    db.collection("jobs").onSnapshot((s) => {
+      state.jobs = s.docs.map((x) => ({ id: x.id, ...x.data() }));
+      if (!a) { a = true; ready(); } render();
+    }, () => { $("load-status").textContent = "Lost the connection to your ledger. Reload the page to reconnect."; });
+    db.collection("transactions").onSnapshot((s) => {
+      state.tx = s.docs.map((x) => ({ id: x.id, ...x.data() })).filter((t) => t.date);
+      if (!b) { b = true; ready(); } render();
+    }, () => { $("load-status").textContent = "Lost the connection to your ledger. Reload the page to reconnect."; });
+  })();
+})();
+</script>
