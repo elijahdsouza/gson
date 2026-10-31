@@ -18,6 +18,7 @@
   --warn: #9a6a00;
   --chart-in: #2b8a6a;
   --chart-out: #d0795f;
+  --chart-oh: #c9a24a;
   --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -25,13 +26,14 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0f1514; --surface: #161e1c; --sunk: #1d2725; --ink: #e4ece9; --muted: #93a49f; --line: #2b3835;
   --accent: #5cc2b6; --accent-soft: #1b3936; --income: #5fc98d; --expense: #ef8a72; --warn: #e2b14a;
-  --chart-in: #4fb592; --chart-out: #e08d74; color-scheme: dark } }
+  --chart-in: #4fb592; --chart-out: #e08d74; --chart-oh: #d8b25a; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #0f1514; --surface: #161e1c; --sunk: #1d2725; --ink: #e4ece9; --muted: #93a49f; --line: #2b3835;
   --accent: #5cc2b6; --accent-soft: #1b3936; --income: #5fc98d; --expense: #ef8a72; --warn: #e2b14a;
-  --chart-in: #4fb592; --chart-out: #e08d74; color-scheme: dark }
+  --chart-in: #4fb592; --chart-out: #e08d74; --chart-oh: #d8b25a; color-scheme: dark }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
 .wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
@@ -128,7 +130,31 @@ form.entry .full { grid-column: 1 / -1; }
 .empty { padding: 28px 12px; text-align: center; color: var(--muted); }
 .banner { border: 1px dashed var(--warn); color: var(--ink); background: var(--surface); border-radius: 8px; padding: 10px 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; font-size: 0.88rem; }
 
+.cv { position: relative; height: 300px; min-width: 0; }
+.cv.tall { height: 340px; }
+.score { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.tile { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 4px; min-width: 0; }
+.tile .val { font-family: var(--font-mono); font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.tile .sub { color: var(--muted); font-size: 0.8rem; }
+.chip { justify-self: start; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 1px 7px; border-radius: 4px; border: 1px solid currentColor; }
+.chip.good { color: var(--income); } .chip.watch { color: var(--warn); } .chip.act { color: var(--expense); } .chip.na { color: var(--muted); }
+.cfo-settings { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: end; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.cfo-settings input { width: 150px; }
+.insights { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.insights li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.insights li:last-child { border-bottom: 0; }
+.insights strong { display: block; }
+.insights .chip { align-self: start; margin-top: 2px; }
+.insights p { margin: 0; color: var(--muted); font-size: 0.9rem; max-width: 80ch; }
+.sheet table { font-size: 0.82rem; border: 1px solid var(--line); }
+.sheet th, .sheet td { border: 1px solid var(--line); padding: 5px 8px; }
+.sheet thead th { background: var(--sunk); position: sticky; top: 0; }
+.sheet .rn, .sheet .cl { background: var(--sunk); color: var(--muted); font-family: var(--font-mono); font-size: 0.7rem; text-align: center; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.sheet td.first { position: sticky; left: 0; background: var(--surface); white-space: nowrap; font-weight: 500; }
+.sheet tr.tot td { font-weight: 600; background: var(--sunk); }
+.sheet tr.tot td.first { background: var(--sunk); }
 @media (max-width: 900px) {
+  .score { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kpi { border-bottom: 1px solid var(--line); }
   .grid2, .compare { grid-template-columns: minmax(0, 1fr); }
@@ -145,8 +171,10 @@ form.entry .full { grid-column: 1 / -1; }
     <div class="brand"><h1>Job Ledger</h1><span>Expenses &amp; profit by event and project</span></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-overview" data-view="overview" aria-selected="true">Overview</button>
+      <button role="tab" id="tab-analysis" data-view="analysis" aria-selected="false">CFO analysis</button>
       <button role="tab" id="tab-jobs" data-view="jobs" aria-selected="false">Events &amp; projects</button>
       <button role="tab" id="tab-ledger" data-view="ledger" aria-selected="false">Ledger</button>
+      <button role="tab" id="tab-spreadsheet" data-view="spreadsheet" aria-selected="false">Spreadsheet</button>
     </nav>
   </div>
 </header>
@@ -199,6 +227,77 @@ form.entry .full { grid-column: 1 / -1; }
     <div class="panel">
       <div class="panel-head"><h2>Events vs projects</h2><p>How each line of work performs in this period</p></div>
       <div class="compare" id="compare"></div>
+    </div>
+  </section>
+
+  <!-- CFO ANALYSIS -->
+  <section class="view" id="view-analysis" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>CFO scorecard</h2><p>Business health for the selected period, against your targets</p></div>
+      <div class="score" id="scorecard"></div>
+      <div class="cfo-settings" id="cfo-settings">
+        <label class="field"><span>Cash on hand (AUD)</span><input type="number" id="s-cash" step="100" min="0" inputmode="decimal"></label>
+        <label class="field"><span>Target job margin %</span><input type="number" id="s-cm" step="1" min="0" max="100" inputmode="decimal"></label>
+        <label class="field"><span>Target net margin %</span><input type="number" id="s-nm" step="1" min="0" max="100" inputmode="decimal"></label>
+        <span class="status" id="s-msg"></span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>CFO briefing</h2><p>What the numbers say and what to do next</p></div>
+      <ul class="insights" id="insights"></ul>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Profit trend</h2>
+        <div class="seg" id="trend-mode">
+          <button type="button" data-m="monthly" aria-pressed="true">Monthly</button>
+          <button type="button" data-m="cumulative" aria-pressed="false">Cumulative</button>
+          <button type="button" data-m="margins" aria-pressed="false">Margins</button>
+        </div>
+      </div>
+      <div class="cv tall"><canvas id="c-trend" aria-label="Profit trend chart" role="img"></canvas></div>
+      <p class="note">Hover for exact figures. Click a legend item to hide or show it.</p>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-head"><h2>Profit by job</h2><p>Click a bar to open that job's report</p></div>
+        <div class="cv" id="cv-jobs"><canvas id="c-jobs" aria-label="Profit by job chart" role="img"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Cost mix</h2>
+          <div class="seg" id="mix-mode">
+            <button type="button" data-m="all" aria-pressed="true">All</button>
+            <button type="button" data-m="jobs" aria-pressed="false">Job costs</button>
+            <button type="button" data-m="overhead" aria-pressed="false">Overheads</button>
+          </div>
+        </div>
+        <div class="cv"><canvas id="c-mix" aria-label="Cost mix chart" role="img"></canvas></div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-head"><h2>Margin vs job size</h2><p>Bubble size shows costs. Dashed line is your target.</p></div>
+        <div class="cv"><canvas id="c-bubble" aria-label="Margin versus job size chart" role="img"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Budget and quote vs actual</h2><p>Spot cost overruns and unbilled income</p></div>
+        <div class="cv"><canvas id="c-budget" aria-label="Budget and quote versus actual chart" role="img"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SPREADSHEET -->
+  <section class="view" id="view-spreadsheet" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Job × cost category</h2>
+        <div class="form-actions"><button class="btn small" type="button" id="xlsx-export">Download Excel workbook</button></div>
+      </div>
+      <p class="note">Every job with its income, each cost category, and its margin, for the period and filters above. Darker cells are bigger costs. The Excel download holds a summary, this table, the job report, a monthly P&amp;L and the full ledger.</p>
+      <div class="table-wrap sheet"><table id="pivot"></table></div>
+      <span class="status" id="x-msg"></span>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Profit by month × job</h2><p>Income less costs in each month. Green is profit, red is loss.</p></div>
+      <div class="table-wrap sheet"><table id="pivot-month"></table></div>
     </div>
   </section>
 
@@ -270,6 +369,8 @@ form.entry .full { grid-column: 1 / -1; }
   </section>
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 (() => {
   const EXPENSE_CATS = ["Venue & hire", "Catering", "Staff & contractors", "Talent & entertainment", "Equipment & AV", "Production & print", "Marketing & ads", "Travel & transport", "Materials & supplies", "Software & subscriptions", "Insurance & permits", "Fees & bank charges", "Other expense"];
@@ -282,7 +383,7 @@ form.entry .full { grid-column: 1 / -1; }
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const today = () => new Date().toISOString().slice(0, 10);
 
-  const state = { jobs: [], tx: [], from: "", to: "", kind: "all", view: "overview", selJob: null, ledgerJob: "all", txType: "expense", editTx: null, editJob: null, canWrite: true };
+  const state = { jobs: [], tx: [], from: "", to: "", kind: "all", view: "overview", selJob: null, ledgerJob: "all", txType: "expense", editTx: null, editJob: null, canWrite: true, settings: { cash: 0, targetCm: 0.35, targetNm: 0.15 } };
   let db = null, downloads = null;
 
   // ---------- derived numbers ----------
@@ -326,6 +427,7 @@ form.entry .full { grid-column: 1 / -1; }
   function render() {
     renderKpis(); renderMonthChart(); renderCats(); renderCompare();
     renderJobs(); renderDetail(); renderJobOptions(); renderLedger();
+    renderAnalysis(); renderSheet();
     $("example-banner").hidden = !(state.canWrite && (state.jobs.some((j) => j.example) || state.tx.some((t) => t.example)));
   }
 
@@ -553,15 +655,347 @@ form.entry .full { grid-column: 1 / -1; }
       }).join("") + "</tbody>";
   }
 
+  // ---------- CFO analysis ----------
+  const charts = {};
+  let trendMode = "monthly", mixMode = "all";
+  const tok = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  function alpha(hex, a) {
+    const h = hex.replace("#", "");
+    if (h.length !== 6) return hex;
+    const n = parseInt(h, 16);
+    return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`;
+  }
+  const isJobTx = (t) => !!(t.jobId && jobById(t.jobId));
+
+  function monthSeries(list) {
+    const m = new Map();
+    for (const t of list) {
+      const k = t.date.slice(0, 7);
+      if (!m.has(k)) m.set(k, { inc: 0, dir: 0, oh: 0, gstIn: 0, gstOut: 0 });
+      const r = m.get(k);
+      if (t.type === "income") { r.inc += net(t); r.gstIn += Number(t.gst) || 0; }
+      else { r[isJobTx(t) ? "dir" : "oh"] += net(t); r.gstOut += Number(t.gst) || 0; }
+    }
+    const keys = [...m.keys()].sort();
+    if (!keys.length) return [];
+    const out = [];
+    let [y, mo] = keys[0].split("-").map(Number);
+    const [ly, lm] = keys[keys.length - 1].split("-").map(Number);
+    let cum = 0;
+    while (y < ly || (y === ly && mo <= lm)) {
+      const k = `${y}-${String(mo).padStart(2, "0")}`;
+      const r = m.get(k) || { inc: 0, dir: 0, oh: 0, gstIn: 0, gstOut: 0 };
+      const exp = r.dir + r.oh, profit = r.inc - exp;
+      cum += profit;
+      out.push({ k, ...r, exp, profit, cum, cm: r.inc ? (r.inc - r.dir) / r.inc : null, nm: r.inc ? profit / r.inc : null });
+      mo++; if (mo > 12) { mo = 1; y++; }
+    }
+    return out;
+  }
+
+  function metrics() {
+    const list = scoped();
+    const period = state.tx.filter(inPeriod);
+    const jobTx = list.filter(isJobTx);
+    const inc = list.filter((t) => t.type === "income").reduce((s, t) => s + net(t), 0);
+    const jobInc = jobTx.filter((t) => t.type === "income").reduce((s, t) => s + net(t), 0);
+    const direct = jobTx.filter((t) => t.type !== "income").reduce((s, t) => s + net(t), 0);
+    const overhead = period.filter((t) => !isJobTx(t) && t.type !== "income").reduce((s, t) => s + net(t), 0);
+    const contribution = inc - direct;
+    const netProfit = contribution - overhead;
+    const cm = inc ? contribution / inc : NaN;
+    const nm = inc ? netProfit / inc : NaN;
+    const months = Math.max(1, monthSeries(period).length);
+    const ohMonthly = overhead / months;
+    const rows = jobRows().map((r) => ({ ...r, alloc: jobInc ? r.inc / jobInc * overhead : 0 })).map((r) => ({ ...r, loaded: r.profit - r.alloc }));
+    const byClient = new Map();
+    rows.forEach((r) => { const c = r.job.client || r.job.name; byClient.set(c, (byClient.get(c) || 0) + r.inc); });
+    const topClient = [...byClient.entries()].sort((a, b) => b[1] - a[1])[0];
+    const gst = list.reduce((s, t) => s + (t.type === "income" ? 1 : -1) * (Number(t.gst) || 0), 0);
+    return {
+      list, inc, direct, overhead, contribution, netProfit, cm, nm, months, ohMonthly, rows, gst,
+      coverage: overhead ? contribution / overhead : NaN,
+      breakEven: cm > 0 ? overhead / cm : NaN,
+      runway: ohMonthly ? (Number(state.settings.cash) || 0) / ohMonthly : NaN,
+      topClient, topShare: topClient && inc ? topClient[1] / inc : NaN,
+      over: rows.filter((r) => Number(r.job.budget) && r.exp > Number(r.job.budget)),
+      losses: rows.filter((r) => r.count && r.profit < 0),
+      below: rows.filter((r) => r.inc > 0 && r.margin >= 0 && r.margin < state.settings.targetCm),
+    };
+  }
+
+  function renderScorecard(m) {
+    const s = state.settings;
+    const tiles = [
+      ["Job margin", pct(m.cm), isNaN(m.cm) ? "na" : m.cm >= s.targetCm ? "good" : m.cm >= s.targetCm * 0.7 ? "watch" : "act", `Target ${pct(s.targetCm)} · income less direct job costs`],
+      ["Net margin", pct(m.nm), isNaN(m.nm) ? "na" : m.nm >= s.targetNm ? "good" : m.nm > 0 ? "watch" : "act", `Target ${pct(s.targetNm)} · after overheads`],
+      ["Net profit", fmt(m.netProfit), m.netProfit > 0 ? "good" : m.netProfit === 0 ? "na" : "act", `${fmt(m.netProfit / m.months)} a month on average`],
+      ["Overhead cover", isFinite(m.coverage) ? m.coverage.toFixed(1) + "x" : "–", !isFinite(m.coverage) ? "na" : m.coverage >= 3 ? "good" : m.coverage >= 1.5 ? "watch" : "act", "Job profit ÷ overheads. Aim for 3x+"],
+      ["Break-even income", isFinite(m.breakEven) ? fmt(m.breakEven) : "–", !isFinite(m.breakEven) ? "na" : m.inc >= m.breakEven ? "good" : "act", isFinite(m.breakEven) ? `${fmt(m.breakEven / m.months)} a month to cover overheads` : "Needs income and a positive job margin"],
+      ["Cash runway", isFinite(m.runway) ? m.runway.toFixed(1) + " mo" : "–", !isFinite(m.runway) || !s.cash ? "na" : m.runway >= 6 ? "good" : m.runway >= 3 ? "watch" : "act", s.cash ? `Months of overheads your ${fmt(s.cash)} covers` : "Enter cash on hand below"],
+      ["Largest client", pct(m.topShare), isNaN(m.topShare) ? "na" : m.topShare > 0.4 ? "act" : m.topShare > 0.25 ? "watch" : "good", m.topClient ? `${esc(m.topClient[0])} share of income` : "No client income yet"],
+      [m.gst >= 0 ? "GST to set aside" : "GST refund due", fmt(Math.abs(m.gst)), "na", "Not profit. Keep it separate for your BAS"],
+    ];
+    $("scorecard").innerHTML = tiles.map(([l, v, st, sub]) => `<div class="tile"><span class="label">${l}</span><span class="val">${v}</span>
+      <span class="chip ${st}">${{ good: "Healthy", watch: "Watch", act: "Act now", na: "Info" }[st]}</span><span class="sub">${sub}</span></div>`).join("");
+  }
+
+  function renderInsights(m) {
+    const s = state.settings, out = [];
+    const add = (lvl, title, text) => out.push({ lvl, title, text });
+    if (!m.list.length) { $("insights").innerHTML = `<li><span class="chip na">Info</span><div><strong>No entries in this period</strong><p>Record income and expenses in the Ledger tab and this briefing will fill in.</p></div></li>`; return; }
+    if (isFinite(m.cm)) {
+      if (m.cm < s.targetCm) {
+        const lift = m.direct / (1 - s.targetCm) - m.inc;
+        add(m.cm < s.targetCm * 0.7 ? "act" : "watch", `Job margin is ${pct(m.cm)}, under your ${pct(s.targetCm)} target`, `At the same costs you'd need about ${fmt(lift)} more income across these jobs to hit target. Review supplier quotes for your largest cost categories and add a margin buffer to new quotes.`);
+      } else add("good", `Job margin of ${pct(m.cm)} is on target`, "Keep quoting from actual cost data from past jobs so the margin holds as prices move.");
+    }
+    if (m.netProfit < 0) add("act", `The business is losing ${fmt(-m.netProfit)} in this period`, `Overheads of ${fmt(m.overhead)} are more than the ${fmt(m.contribution)} your jobs contribute. Cut fixed costs or win ${isFinite(m.breakEven) ? fmt(m.breakEven - m.inc) : "more"} in extra income at today's margin.`);
+    m.losses.forEach((r) => add("act", `${esc(r.job.name)} is running at a loss of ${fmt(-r.profit)}`, Number(r.job.quote) && r.inc < Number(r.job.quote) ? `${fmt(Number(r.job.quote) - r.inc)} of the quote hasn't been received yet. Invoice the balance, and check whether costs can still be trimmed.` : "Costs have exceeded income. Find out why before quoting similar work."));
+    m.over.forEach((r) => add("watch", `${esc(r.job.name)} is ${fmt(r.exp - Number(r.job.budget))} over its cost budget`, `Costs reached ${pct(r.exp / Number(r.job.budget))} of budget. The biggest line is ${esc(topCat(r.job.id))}. Lock supplier prices earlier or build contingency into the budget.`));
+    m.below.filter((r) => !m.losses.includes(r)).forEach((r) => {
+      const price = r.exp / (1 - s.targetCm);
+      add("watch", `${esc(r.job.name)} earns only ${pct(r.margin)}`, `At these costs, pricing it at ${fmt(price)} (ex GST) would have met your ${pct(s.targetCm)} target. That's ${fmt(price - r.inc)} more than you received.`);
+    });
+    const ev = m.rows.filter((r) => r.job.kind === "event"), pr = m.rows.filter((r) => r.job.kind === "project");
+    const mg = (rs) => { const i = rs.reduce((a, r) => a + r.inc, 0); return i ? rs.reduce((a, r) => a + r.profit, 0) / i : NaN; };
+    if (state.kind === "all" && ev.length && pr.length && isFinite(mg(ev)) && isFinite(mg(pr))) {
+      const better = mg(ev) > mg(pr) ? "Events" : "Projects";
+      add("good", `${better} are your more profitable work (${pct(Math.max(mg(ev), mg(pr)))} vs ${pct(Math.min(mg(ev), mg(pr)))})`, better === "Events" ? "Lead your sales pipeline with events and review how projects are scoped and priced." : "Project work gives a stronger margin and often steadier cash flow. Consider retainers, and look at event costs closely.");
+    }
+    if (m.topShare > 0.4) add("act", `${esc(m.topClient[0])} brings in ${pct(m.topShare)} of income`, "Losing this client would hit hard. Widen the client base, or lock in a retainer or multi-event agreement.");
+    if (isFinite(m.coverage)) {
+      if (m.coverage < 1.5) add("act", `Job profit covers overheads only ${m.coverage.toFixed(1)} times`, `Overheads average ${fmt(m.ohMonthly)} a month. Review subscriptions, insurance and other fixed costs, or grow job volume.`);
+      else add("good", `Job profit covers overheads ${m.coverage.toFixed(1)} times`, `You break even at about ${fmt(m.breakEven / m.months)} of income a month. Anything above that is profit.`);
+    }
+    if (s.cash && isFinite(m.runway)) add(m.runway < 3 ? "act" : m.runway < 6 ? "watch" : "good", `Cash covers ${m.runway.toFixed(1)} months of overheads`, m.runway < 6 ? "Aim for a 6-month buffer. Take 50% deposits when you confirm a job and chase final invoices within 7 days." : "A healthy buffer. Consider putting surplus cash in an offset or high-interest account.");
+    if (m.gst > 0) add("watch", `Set aside ${fmt(m.gst)} for GST`, "This is the ATO's money, not profit. A separate GST account stops it being spent before BAS is due.");
+    const ser = monthSeries(m.list);
+    if (ser.length >= 2) {
+      const a = ser[ser.length - 2], b = ser[ser.length - 1];
+      add(b.profit >= a.profit ? "good" : "watch", `${monthLabelLong(b.k)} profit ${b.profit >= a.profit ? "up" : "down"} ${fmt(Math.abs(b.profit - a.profit))} on ${monthLabelLong(a.k)}`, b.profit < 0 ? "Costs for upcoming jobs often land before their income, so check whether this month is pre-spend for a job not yet invoiced." : "Watch the trend over three months or more, not one.");
+    }
+    const order = { act: 0, watch: 1, good: 2 };
+    out.sort((a, b) => order[a.lvl] - order[b.lvl]);
+    $("insights").innerHTML = out.map((i) => `<li><span class="chip ${i.lvl}">${{ act: "Act now", watch: "Watch", good: "Healthy" }[i.lvl]}</span><div><strong>${i.title}</strong><p>${i.text}</p></div></li>`).join("");
+  }
+  function topCat(jobId) {
+    const m = new Map();
+    state.tx.filter((t) => t.jobId === jobId && t.type !== "income" && inPeriod(t)).forEach((t) => m.set(t.category, (m.get(t.category) || 0) + net(t)));
+    const top = [...m.entries()].sort((a, b) => b[1] - a[1])[0];
+    return top ? `${top[0]} at ${fmt(top[1])}` : "n/a";
+  }
+  const monthLabelLong = (k) => { const [y, mo] = k.split("-"); return new Date(+y, +mo - 1, 1).toLocaleString("en-AU", { month: "long" }); };
+
+  function chart(key, el, config) {
+    if (charts[key]) charts[key].destroy();
+    charts[key] = new Chart(el, config);
+  }
+  function baseOpts(extra) {
+    return Object.assign({
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 400 },
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { labels: { boxWidth: 12, boxHeight: 12, color: tok("--muted") } }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmt(c.parsed.y ?? c.parsed)}` } } },
+    }, extra);
+  }
+  const moneyAxis = (stacked) => ({ stacked, grid: { color: tok("--line") }, ticks: { color: tok("--muted"), callback: (v) => shortMoney(v) } });
+
+  function renderCharts(m) {
+    if (typeof Chart === "undefined") {
+      document.querySelectorAll("#view-analysis .cv").forEach((c) => (c.innerHTML = `<div class="empty">Charts couldn't load. Check your connection and reload.</div>`));
+      return;
+    }
+    Chart.defaults.font.family = tok("--font-mono") || "monospace";
+    Chart.defaults.color = tok("--muted");
+    Chart.defaults.borderColor = tok("--line");
+    const cIn = tok("--chart-in"), cOut = tok("--chart-out"), cOh = tok("--chart-oh"), ink = tok("--ink"), acc = tok("--accent"), neg = tok("--expense");
+    const ser = monthSeries(m.list);
+    const labels = ser.map((r) => monthLabel(r.k));
+
+    // trend
+    let cfg;
+    if (trendMode === "monthly") {
+      cfg = { type: "bar", data: { labels, datasets: [
+        { label: "Income", data: ser.map((r) => r.inc), backgroundColor: cIn, stack: "in", borderRadius: 3, order: 2 },
+        { label: "Direct job costs", data: ser.map((r) => r.dir), backgroundColor: cOut, stack: "out", borderRadius: 3, order: 2 },
+        { label: "Overheads", data: ser.map((r) => r.oh), backgroundColor: cOh, stack: "out", borderRadius: 3, order: 2 },
+        { type: "line", label: "Net profit", data: ser.map((r) => r.profit), borderColor: ink, backgroundColor: ink, stack: "p", pointRadius: 4, pointHoverRadius: 6, borderWidth: 2, tension: 0.25, order: 1 },
+      ] }, options: baseOpts({ scales: { x: { stacked: true, grid: { display: false } }, y: moneyAxis(true) } }) };
+    } else if (trendMode === "cumulative") {
+      let ci = 0, ce = 0;
+      cfg = { type: "line", data: { labels, datasets: [
+        { label: "Cumulative income", data: ser.map((r) => (ci += r.inc)), borderColor: cIn, backgroundColor: cIn, borderWidth: 2, tension: 0.25, pointRadius: 3 },
+        { label: "Cumulative costs", data: ser.map((r) => (ce += r.exp)), borderColor: cOut, backgroundColor: cOut, borderWidth: 2, tension: 0.25, pointRadius: 3 },
+        { label: "Cumulative profit", data: ser.map((r) => r.cum), borderColor: acc, backgroundColor: alpha(acc, 0.15), fill: "origin", borderWidth: 2.5, tension: 0.25, pointRadius: 3 },
+      ] }, options: baseOpts({ scales: { x: { grid: { display: false } }, y: moneyAxis(false) } }) };
+    } else {
+      const tgt = (v) => ser.map(() => v * 100);
+      cfg = { type: "line", data: { labels, datasets: [
+        { label: "Job margin", data: ser.map((r) => r.cm == null ? null : r.cm * 100), borderColor: acc, backgroundColor: acc, borderWidth: 2.5, tension: 0.25, spanGaps: true, pointRadius: 4 },
+        { label: "Net margin", data: ser.map((r) => r.nm == null ? null : r.nm * 100), borderColor: ink, backgroundColor: ink, borderWidth: 2, tension: 0.25, spanGaps: true, pointRadius: 4 },
+        { label: "Job margin target", data: tgt(state.settings.targetCm), borderColor: acc, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0 },
+        { label: "Net margin target", data: tgt(state.settings.targetNm), borderColor: ink, borderDash: [2, 4], borderWidth: 1.5, pointRadius: 0 },
+      ] }, options: baseOpts({ plugins: { legend: { labels: { boxWidth: 12, color: tok("--muted") } }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y == null ? "–" : c.parsed.y.toFixed(1) + "%"}` } } },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: tok("--line") }, ticks: { callback: (v) => v + "%" } } } }) };
+    }
+    chart("trend", $("c-trend"), cfg);
+
+    // jobs
+    const rows = [...m.rows].filter((r) => r.count).sort((a, b) => b.profit - a.profit);
+    $("cv-jobs").style.height = Math.max(260, rows.length * 46 + 70) + "px";
+    chart("jobs", $("c-jobs"), { type: "bar", data: { labels: rows.map((r) => r.job.name), datasets: [
+      { label: "Job profit", data: rows.map((r) => r.profit), backgroundColor: rows.map((r) => (r.profit >= 0 ? acc : neg)), borderRadius: 3 },
+      { label: "After share of overheads", data: rows.map((r) => r.loaded), backgroundColor: rows.map((r) => alpha(r.loaded >= 0 ? acc : neg, 0.4)), borderRadius: 3 },
+    ] }, options: baseOpts({ indexAxis: "y", interaction: { mode: "index", intersect: false, axis: "y" },
+      plugins: { legend: { labels: { boxWidth: 12, color: tok("--muted") } }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmt(c.parsed.x)}`, afterBody: (items) => { const r = rows[items[0].dataIndex]; return [`Income ${fmt(r.inc)} · costs ${fmt(r.exp)}`, `Margin ${pct(r.margin)}`]; } } } },
+      scales: { x: { grid: { color: tok("--line") }, ticks: { callback: (v) => shortMoney(v) } }, y: { grid: { display: false }, ticks: { color: tok("--ink") } } },
+      onHover: (e, els) => (e.native.target.style.cursor = els.length ? "pointer" : "default"),
+      onClick: (e, els) => { if (!els.length) return; state.selJob = rows[els[0].index].job.id; setView("jobs"); render(); $("job-detail").scrollIntoView({ block: "start", behavior: "smooth" }); } }) });
+
+    // cost mix
+    const sums = new Map();
+    m.list.concat(state.kind === "all" ? [] : state.tx.filter((t) => inPeriod(t) && !isJobTx(t)))
+      .filter((t) => t.type !== "income" && (mixMode === "all" || (mixMode === "jobs") === isJobTx(t)))
+      .forEach((t) => sums.set(t.category, (sums.get(t.category) || 0) + net(t)));
+    let mix = [...sums.entries()].sort((a, b) => b[1] - a[1]);
+    if (mix.length > 7) mix = mix.slice(0, 6).concat([["Everything else", mix.slice(6).reduce((s, x) => s + x[1], 0)]]);
+    const pal = [acc, cOut, cOh, cIn, tok("--warn"), ink, tok("--muted")];
+    const mixTotal = mix.reduce((s, x) => s + x[1], 0);
+    chart("mix", $("c-mix"), { type: "doughnut", data: { labels: mix.map((x) => x[0]), datasets: [{ data: mix.map((x) => x[1]), backgroundColor: mix.map((_, i) => pal[i % pal.length]), borderColor: tok("--surface"), borderWidth: 2 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: "58%", plugins: { legend: { position: "right", labels: { boxWidth: 12, color: tok("--muted") } }, tooltip: { callbacks: { label: (c) => `${c.label}: ${fmt(c.parsed)} (${pct(c.parsed / mixTotal)})` } } } } });
+
+    // bubble
+    const pts = (kind) => rows.filter((r) => r.job.kind === kind && r.inc > 0).map((r) => ({ x: r.inc, y: r.margin * 100, r: Math.max(6, Math.min(30, Math.sqrt(r.exp) / 6)), name: r.job.name, exp: r.exp }));
+    const maxX = Math.max(1, ...rows.map((r) => r.inc)) * 1.1;
+    chart("bubble", $("c-bubble"), { type: "bubble", data: { datasets: [
+      { label: "Events", data: pts("event"), backgroundColor: alpha(acc, 0.55), borderColor: acc },
+      { label: "Projects", data: pts("project"), backgroundColor: alpha(cOh, 0.55), borderColor: cOh },
+      { type: "line", label: "Target margin", data: [{ x: 0, y: state.settings.targetCm * 100 }, { x: maxX, y: state.settings.targetCm * 100 }], borderColor: ink, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0 },
+    ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { boxWidth: 12, color: tok("--muted") } }, tooltip: { filter: (i) => i.dataset.type !== "line", callbacks: { label: (c) => `${c.raw.name}: income ${fmt(c.raw.x)}, margin ${c.raw.y.toFixed(1)}%, costs ${fmt(c.raw.exp)}` } } },
+      scales: { x: { type: "linear", min: 0, max: maxX, grid: { color: tok("--line") }, ticks: { callback: (v) => shortMoney(v) }, title: { display: true, text: "Income (ex GST)" } }, y: { grid: { color: tok("--line") }, ticks: { callback: (v) => v + "%" }, title: { display: true, text: "Job margin" } } } } });
+
+    // budget vs actual
+    const br = rows.filter((r) => Number(r.job.budget) || Number(r.job.quote));
+    chart("budget", $("c-budget"), { type: "bar", data: { labels: br.map((r) => r.job.name), datasets: [
+      { label: "Quoted income", data: br.map((r) => Number(r.job.quote) || 0), backgroundColor: alpha(cIn, 0.35), borderColor: cIn, borderWidth: 1, borderRadius: 3 },
+      { label: "Actual income", data: br.map((r) => r.inc), backgroundColor: cIn, borderRadius: 3 },
+      { label: "Cost budget", data: br.map((r) => Number(r.job.budget) || 0), backgroundColor: alpha(cOut, 0.35), borderColor: cOut, borderWidth: 1, borderRadius: 3 },
+      { label: "Actual costs", data: br.map((r) => r.exp), backgroundColor: cOut, borderRadius: 3 },
+    ] }, options: baseOpts({ scales: { x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 30 } }, y: moneyAxis(false) } }) });
+  }
+
+  function renderAnalysis() {
+    const m = metrics();
+    renderScorecard(m); renderInsights(m);
+    if (state.view === "analysis") renderCharts(m);
+    const s = state.settings;
+    if (document.activeElement !== $("s-cash")) $("s-cash").value = s.cash || "";
+    if (document.activeElement !== $("s-cm")) $("s-cm").value = Math.round(s.targetCm * 100);
+    if (document.activeElement !== $("s-nm")) $("s-nm").value = Math.round(s.targetNm * 100);
+  }
+  document.querySelectorAll("#trend-mode button").forEach((b) => b.addEventListener("click", () => {
+    trendMode = b.dataset.m;
+    document.querySelectorAll("#trend-mode button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    renderAnalysis();
+  }));
+  document.querySelectorAll("#mix-mode button").forEach((b) => b.addEventListener("click", () => {
+    mixMode = b.dataset.m;
+    document.querySelectorAll("#mix-mode button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    renderAnalysis();
+  }));
+  ["s-cash", "s-cm", "s-nm"].forEach((id) => $(id).addEventListener("change", async () => {
+    const v = (x) => { const n = parseFloat($(x).value); return isFinite(n) ? n : 0; };
+    state.settings = { cash: v("s-cash"), targetCm: Math.min(0.95, v("s-cm") / 100), targetNm: Math.min(0.95, v("s-nm") / 100) };
+    render();
+    if (!db || !state.canWrite) return;
+    try { await db.doc("settings/main").set(state.settings); $("s-msg").textContent = "Saved."; } catch (err) { failed(err, "s-msg"); }
+  }));
+  const rerenderTheme = () => { if (state.view === "analysis") renderAnalysis(); };
+  try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", rerenderTheme); } catch {}
+  new MutationObserver(rerenderTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  // ---------- spreadsheet ----------
+  function pivotData() {
+    const m = metrics();
+    const ohList = state.tx.filter((t) => inPeriod(t) && !isJobTx(t));
+    const catSet = new Set();
+    const lines = m.rows.filter((r) => r.count).map((r) => ({ label: r.job.name, kind: r.job.kind === "event" ? "Event" : "Project", tx: state.tx.filter((t) => t.jobId === r.job.id && inPeriod(t)) }));
+    if (state.kind === "all" && ohList.length) lines.push({ label: "Overheads", kind: "Overhead", tx: ohList });
+    const rows = lines.map((l) => {
+      const costs = {};
+      let inc = 0, exp = 0;
+      l.tx.forEach((t) => { if (t.type === "income") inc += net(t); else { costs[t.category] = (costs[t.category] || 0) + net(t); exp += net(t); catSet.add(t.category); } });
+      return { label: l.label, kind: l.kind, inc, costs, exp, profit: inc - exp, margin: inc ? (inc - exp) / inc : NaN, tx: l.tx };
+    });
+    const cats = EXPENSE_CATS.filter((c) => catSet.has(c)).concat([...catSet].filter((c) => !EXPENSE_CATS.includes(c)));
+    const total = { label: "Total", kind: "", inc: 0, costs: {}, exp: 0 };
+    rows.forEach((r) => { total.inc += r.inc; total.exp += r.exp; cats.forEach((c) => (total.costs[c] = (total.costs[c] || 0) + (r.costs[c] || 0))); });
+    total.profit = total.inc - total.exp; total.margin = total.inc ? total.profit / total.inc : NaN;
+    return { m, cats, rows, total };
+  }
+  const colName = (i) => { let s = ""; i++; while (i > 0) { const r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); } return s; };
+
+  function renderSheet() {
+    const { cats, rows, total } = pivotData();
+    const pv = $("pivot");
+    if (!rows.length) { pv.innerHTML = `<tbody><tr><td class="empty">No entries in this period yet.</td></tr></tbody>`; $("pivot-month").innerHTML = ""; return; }
+    const heads = ["Event / project", "Type", "Income", ...cats, "Total costs", "Profit", "Margin"];
+    const maxCell = Math.max(1, ...rows.flatMap((r) => cats.map((c) => r.costs[c] || 0)));
+    const heat = (v) => (v ? `style="background:color-mix(in srgb, var(--chart-out) ${Math.round(8 + 50 * v / maxCell)}%, var(--surface))"` : "");
+    const line = (r, i, cls) => `<tr class="${cls || ""}"><td class="rn">${i}</td><td class="first">${esc(r.label)}</td><td>${esc(r.kind)}</td><td class="num">${fmt(r.inc)}</td>${cats.map((c) => `<td class="num" ${cls ? "" : heat(r.costs[c] || 0)}>${r.costs[c] ? fmt(r.costs[c]) : "–"}</td>`).join("")}<td class="num">${fmt(r.exp)}</td><td class="num ${r.profit >= 0 ? "pos" : "neg"}">${fmt(r.profit)}</td><td class="num">${pct(r.margin)}</td></tr>`;
+    pv.innerHTML = `<thead><tr><th class="cl"></th>${heads.map((_, i) => `<th class="cl">${colName(i)}</th>`).join("")}</tr><tr><th class="rn">1</th>${heads.map((h, i) => `<th class="${i > 1 ? "num" : ""}">${esc(h)}</th>`).join("")}</tr></thead><tbody>` +
+      rows.map((r, i) => line(r, i + 2)).join("") + line(total, rows.length + 2, "tot") + "</tbody>";
+
+    // month x job
+    const months = monthSeries(state.tx.filter(inPeriod)).map((x) => x.k);
+    const cell = (v) => v ? `<td class="num ${v >= 0 ? "pos" : "neg"}" style="background:color-mix(in srgb, var(${v >= 0 ? "--chart-in" : "--chart-out"}) ${Math.round(6 + 30 * Math.min(1, Math.abs(v) / 20000))}%, var(--surface))">${fmt(v)}</td>` : `<td class="num note">–</td>`;
+    const byMonth = (tx, k) => tx.filter((t) => t.date.startsWith(k)).reduce((s, t) => s + (t.type === "income" ? 1 : -1) * net(t), 0);
+    const mh = ["Event / project", ...months.map(monthLabel), "Total"];
+    $("pivot-month").innerHTML = `<thead><tr><th class="cl"></th>${mh.map((_, i) => `<th class="cl">${colName(i)}</th>`).join("")}</tr><tr><th class="rn">1</th>${mh.map((h, i) => `<th class="${i ? "num" : ""}">${esc(h)}</th>`).join("")}</tr></thead><tbody>` +
+      rows.map((r, i) => `<tr><td class="rn">${i + 2}</td><td class="first">${esc(r.label)}</td>${months.map((k) => cell(byMonth(r.tx, k))).join("")}${cell(r.profit)}</tr>`).join("") +
+      `<tr class="tot"><td class="rn">${rows.length + 2}</td><td class="first">Total</td>${months.map((k) => `<td class="num">${fmt(rows.reduce((s, r) => s + byMonth(r.tx, k), 0))}</td>`).join("")}<td class="num">${fmt(total.profit)}</td></tr></tbody>`;
+  }
+
+  $("xlsx-export").addEventListener("click", async () => {
+    if (typeof XLSX === "undefined" || !downloads) { $("x-msg").textContent = "Excel export isn't available in this view."; return; }
+    const { m, cats, rows, total } = pivotData();
+    const wb = XLSX.utils.book_new();
+    const period = state.from || state.to ? `${state.from || "start"} to ${state.to || today()}` : "All dates";
+    const add = (name, aoa, widths) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = widths.map((w) => ({ wch: w })); XLSX.utils.book_append_sheet(wb, ws, name); };
+    const r2 = (n) => (isFinite(n) ? Math.round(n * 100) / 100 : "");
+    add("Summary", [["Job Ledger summary"], ["Period", period], ["Showing", state.kind === "all" ? "All work" : state.kind === "event" ? "Events" : "Projects"], ["All figures AUD ex GST"], [],
+      ["Income", r2(m.inc)], ["Direct job costs", r2(m.direct)], ["Job contribution", r2(m.contribution)], ["Overheads", r2(m.overhead)], ["Net profit", r2(m.netProfit)],
+      ["Job margin", r2(m.cm)], ["Net margin", r2(m.nm)], ["Overhead cover (x)", r2(m.coverage)], ["Break-even income", r2(m.breakEven)],
+      ["Cash on hand", r2(state.settings.cash)], ["Cash runway (months)", r2(m.runway)], ["Largest client", m.topClient ? m.topClient[0] : ""], ["Largest client share", r2(m.topShare)], ["Net GST", r2(m.gst)]], [28, 18]);
+    add("Job report", [["Event / project", "Type", "Client", "Status", "Start", "End", "Income", "Costs", "Profit", "Margin", "Overhead share", "Net after overhead", "Cost budget", "Quote", "Units"],
+      ...m.rows.map((r) => [r.job.name, r.job.kind, r.job.client || "", r.job.status || "", r.job.start || "", r.job.end || "", r2(r.inc), r2(r.exp), r2(r.profit), r2(r.margin), r2(r.alloc), r2(r.loaded), Number(r.job.budget) || "", Number(r.job.quote) || "", Number(r.job.units) || ""])],
+      [28, 9, 24, 10, 11, 11, 12, 12, 12, 9, 13, 15, 12, 12, 8]);
+    add("Job x category", [["Event / project", "Type", "Income", ...cats, "Total costs", "Profit", "Margin"],
+      ...rows.concat([total]).map((r) => [r.label, r.kind, r2(r.inc), ...cats.map((c) => r2(r.costs[c] || 0)), r2(r.exp), r2(r.profit), r2(r.margin)])], [28, 10, 12, ...cats.map(() => 14), 12, 12, 9]);
+    add("Monthly P&L", [["Month", "Income", "Direct costs", "Overheads", "Net profit", "Cumulative profit", "GST collected", "GST credits", "Net GST"],
+      ...monthSeries(m.list).map((x) => [x.k, r2(x.inc), r2(x.dir), r2(x.oh), r2(x.profit), r2(x.cum), r2(x.gstIn), r2(x.gstOut), r2(x.gstIn - x.gstOut)])], [10, 12, 12, 12, 12, 16, 13, 12, 10]);
+    add("Ledger", [["Date", "Type", "Event / project", "Category", "Supplier / payer", "Note", "Ex GST", "GST", "Total"],
+      ...m.list.slice().sort((a, b) => a.date.localeCompare(b.date)).map((t) => [t.date, t.type, jobById(t.jobId)?.name || "Overhead", t.category, t.party || "", t.note || "", r2(net(t)), r2(Number(t.gst) || 0), r2(Number(t.amount) || 0)])],
+      [11, 9, 28, 24, 24, 20, 12, 10, 12]);
+    try {
+      const data = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      await downloads.save({ filename: `job-ledger-${today()}.xlsx`, data: new Uint8Array(data) });
+      $("x-msg").textContent = "";
+    } catch (err) { $("x-msg").textContent = err && err.code === "unavailable" ? "Downloads aren't available in this view." : "The download was cancelled or blocked."; }
+  });
+
   // ---------- filters & navigation ----------
+  const VIEWS = ["overview", "analysis", "jobs", "ledger", "spreadsheet"];
   function setView(v) {
     state.view = v;
     document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === v)));
-    ["overview", "jobs", "ledger"].forEach((k) => ($("view-" + k).hidden = k !== v));
+    VIEWS.forEach((k) => ($("view-" + k).hidden = k !== v));
     try { history.replaceState(null, "", "#" + v); } catch {}
+    if (v === "analysis") renderAnalysis();
   }
   document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
-  window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (["overview", "jobs", "ledger"].includes(h)) setView(h); });
+  window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (VIEWS.includes(h)) setView(h); });
 
   function fyStart(d) { return d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1; }
   function setPeriod(p) {
@@ -743,13 +1177,14 @@ form.entry .full { grid-column: 1 / -1; }
 
   function applyWriteAccess() {
     ["tx-form", "job-form"].forEach((id) => $(id).closest(".panel").hidden = !state.canWrite);
+    ["s-cash", "s-cm", "s-nm"].forEach((id) => ($(id).disabled = !state.canWrite));
     render();
   }
 
   // ---------- boot ----------
   $("t-date").value = today();
   setTxType("expense");
-  { const h = location.hash.slice(1); if (["overview", "jobs", "ledger"].includes(h)) setView(h); }
+  { const h = location.hash.slice(1); if (VIEWS.includes(h)) setView(h); }
   render();
 
   (async () => {
@@ -764,6 +1199,9 @@ form.entry .full { grid-column: 1 / -1; }
     const timer = setTimeout(() => { if (got < 2) $("load-status").textContent = "Still connecting… entries will appear when the ledger answers."; }, 10000);
     const ready = () => { if (++got === 2) { clearTimeout(timer); $("load-status").hidden = true; } };
     let a = false, b = false;
+    db.doc("settings/main").onSnapshot((s) => {
+      if (s.exists) { const d = s.data(); state.settings = { cash: Number(d.cash) || 0, targetCm: Number(d.targetCm) || 0.35, targetNm: Number(d.targetNm) || 0.15 }; render(); }
+    }, () => {});
     db.collection("jobs").onSnapshot((s) => {
       state.jobs = s.docs.map((x) => ({ id: x.id, ...x.data() }));
       if (!a) { a = true; ready(); } render();
